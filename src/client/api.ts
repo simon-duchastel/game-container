@@ -17,6 +17,12 @@ import type { GamePayload } from '@game-hub/kernel/client';
 /** The game type id this client speaks. Matches the backend module's `id`. */
 export const GAME_TYPE = 'container';
 
+/**
+ * Container's redacted per-client view, re-exported from here so the board and a host name one type from
+ * the `./client` surface (game-creation.md §4) without importing `./engine` (the view type is the engine's).
+ */
+export type { GameView } from '../engine/index.js';
+
 /** A Container game payload, with its state pinned to Container's view. */
 export type ContainerPayload = GamePayload<GameView>;
 

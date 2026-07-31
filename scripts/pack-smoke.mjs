@@ -129,6 +129,23 @@ const clientDir = dirname(require.resolve('@game-hub/game-container/client'));
 const board = await import(pathToFileURL(join(clientDir, 'Board.js')).href);
 assert.equal(typeof board.default, 'function', 'dist/client/Board.js must load and default-export the board');
 
+// The game's "box lid" mark (kernel 1.3.0's optional GameClient.Icon) is lazy exactly like the board, so
+// it splits the same way and its art file must likewise be in the tarball and loadable by plain Node.
+assert.equal(
+  containerClient.Icon.$$typeof,
+  Symbol.for('react.lazy'),
+  'the icon must be a React.lazy — same split as the board',
+);
+const icon = await import(pathToFileURL(join(clientDir, 'art', 'Icon.js')).href);
+assert.equal(typeof icon.default, 'function', 'dist/client/art/Icon.js must load and default-export the icon');
+
+// The standardized ./client surface (game-creation.md §4): named exports beside the default.
+const client = await import('@game-hub/game-container/client');
+assert.equal(client.GAME_TYPE, 'container', './client must name GAME_TYPE');
+assert.equal(typeof client.act, 'function', './client must name act');
+assert.equal(typeof client.getGameAs, 'function', './client must name getGameAs');
+assert.equal(client.default, containerClient, 'the default IS the named client object');
+
 // --- ./bot — the AI decides a legal move from a redacted view, and the engine accepts it. ---
 const fresh = containerModule.createGame({ id: 'b', players: threePlayers, rng: () => 0.5 });
 const seat = fresh.players[fresh.activePlayerIndex].id;
@@ -146,9 +163,32 @@ console.log('runtime smoke ok — ./engine ./module ./client ./bot all resolve, 
 /** What a consumer's compiler must see: the exported type surface, through the published `exports`. */
 const TYPE_CONSUMER = `import { createGame, viewFor, type GameState, type GameView, type Action } from '@game-hub/game-container/engine';
 import containerModule from '@game-hub/game-container/module';
-import containerClient from '@game-hub/game-container/client';
+import containerClient, {
+  act,
+  getGameAs,
+  GAME_TYPE,
+  type BoardProps,
+  type GameClient,
+  type ContainerPayload,
+  type GameView as ClientGameView,
+} from '@game-hub/game-container/client';
 import { decide, type DecideFn } from '@game-hub/game-container/bot';
 import type { GameModule as KernelGameModule } from '@game-hub/kernel';
+
+// The standardized ./client surface (game-creation.md §4): the client is both a default AND a typed named
+// export, and BoardProps + the payload/view types are nameable from the one ./client subpath without
+// reaching into ./api. Touch each so a drift in the barrel fails this consumer. \`act\`/\`getGameAs\` return
+// the payload; BoardProps<GameView> is what the shell hands the board; the view re-exported here is the
+// engine's.
+const _client: GameClient<ClientGameView> = containerClient;
+const _act: typeof act = act;
+const _getGameAs: typeof getGameAs = getGameAs;
+const _gameType: string = GAME_TYPE;
+const _payload = (p: ContainerPayload): ClientGameView => p.game;
+const _boardGame = (props: BoardProps<ClientGameView>): ClientGameView => props.game;
+// The icon is the optional lazy GameClient.Icon (kernel 1.3.0), erased to ComponentType<{ className?: string }>.
+const _icon = containerClient.Icon;
+void [_client, _act, _getGameAs, _gameType, _payload, _boardGame, _icon];
 
 // The one assignment that matters: what ./module exports really is a kernel GameModule, checked through
 // the *published* .d.ts of both packages rather than through the workspace's source. Container binds the

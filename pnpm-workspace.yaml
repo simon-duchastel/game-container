@@ -19,5 +19,5 @@ autoInstallPeers: false
 # `@game-hub/kernel@1.2.0` and `@game-hub/ui-kit@1.0.0` are recent, so they are excluded here until they
 # age past the threshold, after which these lines can be deleted.
 minimumReleaseAgeExclude:
-  - '@game-hub/kernel@1.2.0'
+  - '@game-hub/kernel@1.2.0 || 1.3.0'
   - '@game-hub/ui-kit@1.0.0'

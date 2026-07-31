@@ -16,11 +16,11 @@ importers:
         specifier: ^9.39.5
         version: 9.39.5
       '@game-hub/kernel':
-        specifier: ^1.2.0
-        version: 1.2.0(@types/react@19.2.17)
+        specifier: ^1.3.0
+        version: 1.3.0(@types/react@19.2.17)
       '@game-hub/ui-kit':
         specifier: ^1.0.0
-        version: 1.0.0(@game-hub/kernel@1.2.0(@types/react@19.2.17))(react@19.2.8)
+        version: 1.0.0(@game-hub/kernel@1.3.0(@types/react@19.2.17))(react@19.2.8)
       '@testing-library/dom':
         specifier: ^10.4.1
         version: 10.4.1
@@ -386,8 +386,8 @@ packages:
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
 
-  '@game-hub/kernel@1.2.0':
-    resolution: {integrity: sha512-6pgYkNTMTJuxc5pwZyU0UoWTRkxr6+6S7e9Q4OzNnvL4oehx8OCQwrmfJyWayzn11+EJG65Q12SaPkHihBeQGA==}
+  '@game-hub/kernel@1.3.0':
+    resolution: {integrity: sha512-oiL19t4tGuVDhY0x2DHFBQ8/lJH010FdHY2+NxHbvb+aq2EF1w6tJ/drvnFQ4QOZkhnT2hiVg+7Kpg6tS+d8dQ==}
     peerDependencies:
       '@types/react': ^19.0.0
     peerDependenciesMeta:
@@ -2491,13 +2491,13 @@ snapshots:
       '@fastify/forwarded': 3.0.2
       ipaddr.js: 2.4.0
 
-  '@game-hub/kernel@1.2.0(@types/react@19.2.17)':
+  '@game-hub/kernel@1.3.0(@types/react@19.2.17)':
     optionalDependencies:
       '@types/react': 19.2.17
 
-  '@game-hub/ui-kit@1.0.0(@game-hub/kernel@1.2.0(@types/react@19.2.17))(react@19.2.8)':
+  '@game-hub/ui-kit@1.0.0(@game-hub/kernel@1.3.0(@types/react@19.2.17))(react@19.2.8)':
     dependencies:
-      '@game-hub/kernel': 1.2.0(@types/react@19.2.17)
+      '@game-hub/kernel': 1.3.0(@types/react@19.2.17)
       class-variance-authority: 0.7.1
       clsx: 2.1.1
       lucide-react: 0.469.0(react@19.2.8)
