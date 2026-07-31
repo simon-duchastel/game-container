@@ -1,0 +1,10 @@
+# Build outputs & deps
+**/dist/**
+**/node_modules/**
+**/coverage/**
+
+# Tooling / generated
+pnpm-lock.yaml
+
+# Docs are hand-wrapped — reflowing would churn every line and break intended layout
+*.md

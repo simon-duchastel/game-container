@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // Out-of-repo game package (Track D): the hub's in-workspace game packages extend
+  // `../../../tsconfig.base.json`, which does not exist here. The compiler options below are that file
+  // inlined verbatim, plus the ones this game adds for its `./client` and `./module` subpaths (`jsx`,
+  // the DOM libs, and the React + better-sqlite3 ambient types).
+  // ⚠️ Keep them byte-compatible with the hub's base — the whole point of the extraction is that a game
+  // built out here is the same shape as one built in there.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // `react` for ./client; `better-sqlite3` because ./module binds the auction table's Database type.
+    "types": ["react", "better-sqlite3"],
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    "declaration": true,
+    "sourceMap": true,
+
+    // For `./client` (the hub games set these in their own tsconfig on top of the base).
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "noEmit": true
+  },
+  // `src` (all four subpaths) + this package's own vitest config. The flat ESLint config is plain JS
+  // and isn't typechecked (no `allowJs`), so it is deliberately not included.
+  "include": ["src", "vitest.config.ts"]
+}

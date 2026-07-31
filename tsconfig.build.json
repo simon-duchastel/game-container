@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // The publish build (Track D): the same compiler options the repo typechecks with, but emitting.
+  //
+  // `dist/` is what the `publishConfig.exports` map resolves to, so this compile is the artefact a host
+  // installs — plain `.js` + `.d.ts` + maps, one file per source file, mirroring `src/`'s folders so the
+  // four subpaths keep their shape (`dist/engine/index.js`, `dist/module/index.js`, …).
+  //
+  // ⚠️ Two properties this build depends on and must not lose:
+  //
+  //   1. **`module: ESNext` is inherited, not overridden.** It is what makes the client's
+  //      `lazy(() => import('./Board.js'))` survive emit as a real dynamic `import()` — the line the host
+  //      code-splits on. Downlevelling to CJS would turn it into a `require` and silently un-split the
+  //      board for every consumer.
+  //   2. **Relative specifiers carry `.js` in the source** (see `CLAUDE.md` — the kernel's D2a lesson).
+  //      `tsc` emits them verbatim and Node ESM does no extension or directory resolution, so an
+  //      extensionless `from '../engine'` would produce a tarball that throws `ERR_MODULE_NOT_FOUND` on
+  //      first import while every in-workspace suite stayed green. `scripts/pack-smoke.mjs` is the check.
+  "extends": "./tsconfig.json",
+  //
+  // On the maps: `sourceMap` is inherited from `tsconfig.json` and paired with **`inlineSources`**,
+  // because the tarball ships `dist` and not `src` — a plain `.js.map` would point at `../src/**` files
+  // that do not exist in a consumer's `node_modules`, and every bundler that reads it says so out loud
+  // (Vitest and Vite both warn: "Sourcemap … points to missing source files"). Inlining the original
+  // TypeScript into the map costs a little tarball size and buys a consumer real step-through debugging
+  // of this game's rules. `declarationMap` is deliberately **off** for the same reason with no
+  // equivalent fix: a `.d.ts.map` can only reference `../src/**`, so it would send "go to definition"
+  // to a missing file — worse than not shipping one.
+  "compilerOptions": {
+    "outDir": "dist",
+    "inlineSources": true,
+    "noEmit": false
+  },
+  // Only the shipped sources. Test files and their shared helpers live in `src/**/tests/` and are
+  // excluded wholesale — they import `vitest`, which the tarball must not ask a consumer to install.
+  "include": ["src"],
+  "exclude": ["src/**/tests/**"]
+}

@@ -1,0 +1,69 @@
+name: CI
+
+# The out-of-repo proof (Track D).
+#
+# This workflow is the point of an extracted game: a runner with no access to the Game Hub monorepo
+# installs `@game-hub/kernel` and `@game-hub/ui-kit` **from the public npm registry**, then typechecks,
+# lints and tests this package's four subpaths. If the published contract is incomplete, it fails here
+# rather than when someone outside the org tries to build against it.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # lets you trigger a run manually from the Actions tab
+
+# Cancel an in-flight run if you push again to the same branch — no point building a superseded commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Typecheck, lint & engine/bot gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm first (setup-node's pnpm cache needs it on PATH). No version here: action-setup reads the
+      # `packageManager` field in package.json, so CI uses the exact pnpm the repo pins.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc # Node 22 — the version the hub ships on
+          cache: pnpm
+          registry-url: https://registry.npmjs.org/
+
+      # `--frozen-lockfile` is what makes this an honest test: the committed lockfile must already
+      # resolve @game-hub/* to registry tarballs. A workspace/link: entry would fail to install here.
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck # strict, all four subpaths (a package checks its own client)
+
+      - run: pnpm lint # ESLint 9 flat config: hooks-deps + real hazards (fast, not a second typecheck)
+
+      - run: pnpm format:check # Prettier — style is enforced here, not in ESLint
+
+      # The engine 100% gate and the bot 90% gate.
+      #
+      # One vitest worker, copied from the hub's CI: coverage-instrumented forks are CPU-bound and the
+      # free 2/4-core runner starves them, which flaked the hub's bench tests past even a 30s timeout.
+      # Local runs are unaffected.
+      - run: pnpm test
+        env:
+          VITEST_MAX_FORKS: '1'
+          VITEST_MAX_THREADS: '1' # same cap if a config ever opts into the threads pool
+
+      # The publish artefact — the only check in this job that runs against `dist/` rather than TS
+      # source. It packs the tarball, installs it **plus its declared peers from the public registry**
+      # into a throwaway project outside this repo, drives a real game (and a bot move) through all four
+      # subpaths under plain `node`, and typechecks a consumer against the shipped `.d.ts` under
+      # `nodenext` resolution.
+      #
+      # It catches the one failure this repo cannot otherwise see: `tsc` emits relative specifiers
+      # verbatim, so an extensionless `from '../engine'` yields a tarball that throws
+      # `ERR_MODULE_NOT_FOUND` on first import while every step above is green. Last, because it is the
+      # slowest (a build, a pack and two installs) and a failure here only means something once the
+      # source itself is known good.
+      - run: pnpm pack:smoke

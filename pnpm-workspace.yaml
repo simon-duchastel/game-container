@@ -1,0 +1,23 @@
+# pnpm settings for this single-package repo. (There is no `packages:` glob on purpose — this repo is
+# ONE package, not a workspace. The file exists only because pnpm 11 reads its settings from here.)
+
+# Native/postinstall build scripts we explicitly trust (pnpm blocks all others). Vitest pulls esbuild
+# in transitively and it needs its postinstall to place the platform binary. `better-sqlite3` is a
+# **type-only** devDependency here (`./module` names its `Database` type but never imports the package
+# at runtime), so its native build is deliberately NOT trusted — an unbuilt copy is harmless.
+allowBuilds:
+  better-sqlite3: false
+  esbuild: true
+
+# Peers are contracts for the HOST that installs this game (it brings @game-hub/kernel, @game-hub/ui-kit
+# and React). Auto-installing them here would hide a missing peer declaration behind a silently
+# materialised copy — exactly the class of bug an out-of-repo game exists to surface. The three peers are
+# also declared as devDependencies so this repo can build and test standalone.
+autoInstallPeers: false
+
+# ⚠️ pnpm 11 refuses packages younger than its default `minimumReleaseAge` (a supply-chain guard).
+# `@game-hub/kernel@1.2.0` and `@game-hub/ui-kit@1.0.0` are recent, so they are excluded here until they
+# age past the threshold, after which these lines can be deleted.
+minimumReleaseAgeExclude:
+  - '@game-hub/kernel@1.2.0'
+  - '@game-hub/ui-kit@1.0.0'
