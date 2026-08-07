@@ -1,6 +1,6 @@
 # @game-hub/game-container
 
-**Container (10th Anniversary Edition)** as a [Game Hub](https://github.com/whtdrgn101/container) game
+**Container (10th Anniversary Edition)** as a [Game Hub](https://github.com/whtdrgn101/game-hub) game
 package: a 3–5 player economic supply-chain game where you produce goods, ship them down a chain you do
 **not** control — onto opponents' harbors and ships, then to the island — and where **you can never buy or
 ship your own containers**. Every player holds a secret scoring card; when two colours of goods run out the
