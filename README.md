@@ -1,10 +1,12 @@
 # @game-hub/game-container
 
 **Container (10th Anniversary Edition)** as a [Game Hub](https://github.com/whtdrgn101/game-hub) game
-package: a 3–5 player economic supply-chain game where you produce goods, ship them down a chain you do
+package: a 3–100 player economic supply-chain game where you produce goods, ship them down a chain you do
 **not** control — onto opponents' harbors and ships, then to the island — and where **you can never buy or
 ship your own containers**. Every player holds a secret scoring card; when two colours of goods run out the
-game ends and the highest total wins.
+game ends and the highest total wins. Resource supply scales linearly with the seat count (so an N-agent
+game deals correctly at any N), and the engine ships a headless simulation surface for driving games
+without a server.
 
 **And it is built outside the platform's monorepo.** Most Game Hub games live inside the platform's
 monorepo. This one does not: it is a standalone repository that depends on `@game-hub/kernel` and
@@ -17,15 +19,15 @@ There are **zero references to the platform repository** in this one: no path, n
 lockfile resolves `@game-hub/*` to registry tarballs with integrity hashes, and CI installs with
 `--frozen-lockfile` so it cannot silently start doing anything else.
 
-## The four subpaths
+## The subpaths
 
-A Game Hub game is **additive** — four subpath exports behind game-agnostic hosts, so adding one touches no
+A Game Hub game is **additive** — subpath exports behind game-agnostic hosts, so adding one touches no
 shared core:
 
 ```
 src/
   engine/     the pure rules core — no I/O, no Date, no Math.random. 100% coverage gate.
-    core/       constants, types, errors, the scoring cards, the container colours
+    core/       constants, types, errors, the scoring cards, the container colours, the N-scaling formulas
     actions/    one mechanic per file (produce, sail, deliver, factory/harbor purchase, loans, bank, …)
     internal/   shared helpers (bank, containers, players, the kernel record()/seating bindings)
     createGame.ts   deterministic setup; view.ts   the per-viewer redaction (secret scoring card)
@@ -35,10 +37,27 @@ src/
   client/     the UI seam — the GameClient + the board (original board/ship/container art, the BoardMap,
               the player mats, the auction panel). The board is React.lazy so the home screen stays light.
   bot/        the AI (90% coverage gate) — decides from the redacted view (structurally unable to read an
-              opponent's card): one-per-concern policies, sealed bids, self-play across 3–5 players.
+              opponent's card): one-per-concern policies, sealed bids, self-play.
+  sim/        the headless simulation surface (90% gate) — an **async** agent loop (the shape an external
+              agent such as a language model plugs into), a portable replay envelope, and a bin.
+  bin/        `container-sim`, a shebang wrapper over `sim/cli.ts`.
 ```
 
-`./engine`, `./module`, `./client` and `./bot` are the only entry points; each has its own `index.ts`.
+`./engine`, `./module`, `./client`, `./bot` and `./sim` are the entry points; each has its own `index.ts`.
+
+### Headless simulation
+
+```bash
+node dist/bin/container-sim.js --count 100 --seed 42 --emit-replay out.json
+container-sim --agents pi --count 8 --games 3       # once installed, the bin is on PATH
+```
+
+The CLI runs games with no server, prints the scores, and optionally writes a replay JSON. `--agents
+heuristic` (default) uses the synchronous built-in self-play; `--agents pi` uses the async agent loop with
+the built-in heuristic standing in for a model — a host wires a real decider through `runAgentGame`. The
+loop contains any bad/timed-out agent decision with the deterministic built-in `decide`, so a game never
+wedges. Replays are **full snapshots**, not the lossy `moves` log (a losing delivery bid is never recorded),
+so a replay reconstructs every turn and the final scoring exactly.
 
 ## Running it
 
@@ -46,14 +65,14 @@ Requires **Node 22** (`.nvmrc`) and **pnpm** (the version is pinned in `packageM
 
 ```bash
 pnpm install         # resolves @game-hub/* from the public registry
-pnpm test            # vitest + the coverage gates (engine 100%, bot 90%)
+pnpm test            # vitest + the coverage gates (engine 100%, bot 90%, sim 90%)
 pnpm test:watch
-pnpm typecheck       # strict TS across all four subpaths
+pnpm typecheck       # strict TS across all subpaths
 pnpm lint            # ESLint 9 flat config — real hazards, not a second typecheck
 pnpm format:check    # Prettier (hand-wrap Markdown; *.md is Prettier-ignored)
 pnpm build           # tsc → dist/ (JS + .d.ts + inline-source maps), what publishConfig points at
-pnpm pack:smoke      # pack, install outside this repo, play a game (+ a bot move) under plain node,
-                     # then typecheck a consumer against the shipped .d.ts under nodenext resolution
+pnpm pack:smoke      # pack, install outside this repo, play a game (+ a bot move + a sim replay) under
+                     # plain node, then typecheck a consumer against the shipped .d.ts under nodenext
 ```
 
 ⚠️ **Relative imports in the shipped sources carry an explicit `.js` extension** (`'../engine/index.js'`) —

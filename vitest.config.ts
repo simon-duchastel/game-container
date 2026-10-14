@@ -16,7 +16,7 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['src/engine/**/*.test.ts', 'src/bot/**/*.test.ts'],
+    include: ['src/engine/**/*.test.ts', 'src/bot/**/*.test.ts', 'src/sim/**/*.test.ts'],
     // The bot's bench/self-play tests run whole seeded games (CPU-bound), and CI caps vitest to one fork
     // (`VITEST_MAX_FORKS`), so the default 5s timeout starves them under contention. Headroom, not a
     // hang-mask: a genuinely wedged test still dies here.
@@ -24,7 +24,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/engine/**/*.ts', 'src/bot/**/*.ts'],
+      include: ['src/engine/**/*.ts', 'src/bot/**/*.ts', 'src/sim/**/*.ts'],
       exclude: [
         // Engine excludes (ported verbatim from the hub's engine gate).
         'src/engine/**/tests/**', // test files + shared helpers
@@ -35,6 +35,10 @@ export default defineConfig({
         'src/bot/**/tests/**', // test files + shared helpers
         'src/bot/**/index.ts', // public + policies barrels (re-exports only)
         'src/bot/types.ts', // compile-time only (options/context interfaces)
+        // Sim: the barrel is re-exports only, and the bin is a shebang wrapper tested through cli.ts.
+        'src/sim/**/tests/**',
+        'src/sim/index.ts',
+        'src/bin/**',
       ],
       thresholds: {
         // The pure rules core — every rule and every rejection path tested.
@@ -46,6 +50,15 @@ export default defineConfig({
         },
         // The AI opinions — legal + reachable, not exhaustive (the bot package's standing 90% bar).
         'src/bot/**': {
+          statements: 90,
+          branches: 90,
+          functions: 90,
+          lines: 90,
+        },
+        // The headless sim loop — orchestration, not rules, so the same 90% bar as the bot: every
+        // path (agent, fallback, replay, CLI) must be reachable, but the exact branches of a driver
+        // dispatch are not rules and don't earn a 100% bar.
+        'src/sim/**': {
           statements: 90,
           branches: 90,
           functions: 90,

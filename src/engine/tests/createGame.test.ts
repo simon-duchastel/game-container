@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIONS_PER_TURN, createGame, STARTING_MONEY } from '../index.js';
+import {
+  ACTIONS_PER_TURN,
+  bankAuctionTokens,
+  containerSupply,
+  createGame,
+  factorySupplyPerColor,
+  MAX_PLAYERS,
+  STARTING_MONEY,
+  warehouseSupplyTotal,
+} from '../index.js';
 import { expectError, newGame, sc } from './helpers.js';
 
 describe('createGame', () => {
@@ -61,6 +70,39 @@ describe('createGame', () => {
     expect(state.bank.tokens).toBe(2); // 5 players
   });
 
+  // The linear resource formulas are the whole N-seat change, so pin them to the legacy rulebook
+  // table at 3/4/5 (byte-for-byte) and pin their behaviour above it. If a future edit retunes the
+  // formulas, this is the test that says whether N=5 moved.
+  it.each([3, 4, 5])('scales resources identically to the legacy table at N=%i', (n) => {
+    expect(factorySupplyPerColor(n)).toBe({ 3: 2, 4: 3, 5: 4 }[n]);
+    expect(warehouseSupplyTotal(n)).toBe({ 3: 12, 4: 16, 5: 20 }[n]);
+    expect(containerSupply(n)).toBe({ 3: 11, 4: 14, 5: 17 }[n]);
+    expect(bankAuctionTokens(n)).toBe({ 3: 1, 4: 1, 5: 2 }[n]);
+  });
+
+  it('scales linearly above the legacy table (N=100)', () => {
+    expect(factorySupplyPerColor(100)).toBe(99);
+    expect(warehouseSupplyTotal(100)).toBe(400);
+    expect(containerSupply(100)).toBe(302);
+    expect(bankAuctionTokens(100)).toBe(97);
+  });
+
+  it('builds a complete N=100-seat game with scaled supply and dealt cards', () => {
+    const state = newGame(100);
+    expect(state.players).toHaveLength(100);
+    // Every seat gets a distinct starting factory colour and a scoring card (both wrap the five
+    // legacy colours/cards via `seat % 5`).
+    expect(new Set(state.players.map((p) => p.scoringCard.id)).size).toBe(5);
+    // Supply is the closed-form total minus the N starting factories and minus the 3 seeded Bank
+    // containers — always non-negative, which is what an economy that can't be dealt would break.
+    expect(state.supply.warehouses).toBe(400 - 100);
+    for (const color of ['white', 'red', 'green', 'blue', 'yellow'] as const) {
+      expect(state.supply.containers[color]).toBeGreaterThanOrEqual(0);
+      expect(state.supply.factories[color]).toBeGreaterThanOrEqual(0);
+    }
+    expect(state.status).toBe('active');
+  });
+
   it('deals an explicitly chosen scoring card', () => {
     const state = createGame({
       id: 'g1',
@@ -81,8 +123,8 @@ describe('createGame', () => {
     expectError(() => createGame({ id: 'g1', players: [{ name: 'A' }, { name: 'B' }] }), 'INVALID_PLAYER_COUNT');
   });
 
-  it('rejects more than 5 players', () => {
-    const players = Array.from({ length: 6 }, (_, i) => ({ name: `P${i}` }));
-    expect(() => createGame({ id: 'g1', players })).toThrowError(/3–5 players/);
+  it('rejects more than MAX_PLAYERS players', () => {
+    const players = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => ({ name: `P${i}` }));
+    expect(() => createGame({ id: 'g1', players })).toThrowError(new RegExp(`3–${MAX_PLAYERS} players`));
   });
 });

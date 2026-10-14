@@ -1,10 +1,13 @@
-import { MAX_PLAYERS, MIN_PLAYERS, viewFor } from '../../engine/index.js';
+import { viewFor } from '../../engine/index.js';
 import { describe, expect, it } from 'vitest';
 
 import { playSelfPlay } from '../selfPlay.js';
 import { newGame } from './helpers.js';
 
-const counts = Array.from({ length: MAX_PLAYERS - MIN_PLAYERS + 1 }, (_, i) => MIN_PLAYERS + i);
+// The legacy rulebook counts (3–5) for the exhaustive self-play suite. Above that the engine scales,
+// but a full N-seat self-play at MAX_PLAYERS is a stress test, not a unit test — the N-seat driver is
+// exercised by the headless CLI and by the dedicated test at the bottom of this file.
+const counts = [3, 4, 5] as const;
 
 describe('playSelfPlay', () => {
   // The headline test for the whole package. A self-play game drives thousands of real actions
@@ -59,6 +62,15 @@ describe('playSelfPlay', () => {
     expect(types).toContain('FACTORY_PURCHASE');
     expect(types).toContain('HARBOR_PURCHASE');
     expect(types).toContain('DELIVER');
+  });
+
+  it('plays a complete 8-seat game with the scaled supply (above the legacy table)', () => {
+    // The N-seat path end to end: a count the old `[count]!` tables could not serve at all. Kept small
+    // so the test stays fast; the CLI can drive 100 seats unattended.
+    const result = playSelfPlay(newGame(8));
+    expect(result.actions).toBeGreaterThan(50);
+    // It either finishes naturally or the runaway-turn guard stops it — never wedges.
+    expect(result.state.status === 'ended' || !result.completed).toBe(true);
   });
 
   it('delivers repeatedly, not just once by accident', () => {

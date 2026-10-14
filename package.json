@@ -2,7 +2,7 @@
   "name": "@game-hub/game-container",
   "version": "0.1.1",
   "type": "module",
-  "description": "Container (10th Anniversary Edition) as a Game Hub game package — the second game extracted OUT of the platform monorepo (Track D), built against the published @game-hub/kernel and @game-hub/ui-kit. Four subpath exports over TypeScript source: ./engine (pure economic-supply-chain rules core, with a secret scoring card per player redacted by viewFor), ./module (backend GameModule using every optional hook — the delivery-auction routes over its own SQLite table, pendingStep, onStateChanged auction push, and a bot runner with the auction preStep), ./client (UI GameClient — original board/ship art + the BoardMap), ./bot (AI deciding from the redacted view: one-per-concern policies, sealed bids, self-play 3–5 players).",
+  "description": "Container (10th Anniversary Edition) as a Game Hub game package — the second game extracted OUT of the platform monorepo (Track D), built against the published @game-hub/kernel and @game-hub/ui-kit. Six subpath exports over TypeScript source: ./engine (pure economic-supply-chain rules core, with a secret scoring card per player redacted by viewFor), ./module (backend GameModule using every optional hook — the delivery-auction routes over its own SQLite table, pendingStep, onStateChanged auction push, and a bot runner with the auction preStep), ./client (UI GameClient — original board/ship art + the BoardMap), ./bot (AI deciding from the redacted view: one-per-concern policies, sealed bids, self-play), ./sim (headless async agent loop + portable replay, no server), plus a container-sim bin. Resource supply scales linearly with the seat count (MAX_PLAYERS raised to 100), so an N-agent game deals at any N.",
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
@@ -20,7 +20,11 @@
     "./module": "./src/module/index.ts",
     "./client": "./src/client/index.ts",
     "./bot": "./src/bot/index.ts",
+    "./sim": "./src/sim/index.ts",
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "container-sim": "./dist/bin/container-sim.js"
   },
   "publishConfig": {
     "access": "public",
@@ -40,6 +44,10 @@
       "./bot": {
         "types": "./dist/bot/index.d.ts",
         "default": "./dist/bot/index.js"
+      },
+      "./sim": {
+        "types": "./dist/sim/index.d.ts",
+        "default": "./dist/sim/index.js"
       },
       "./package.json": "./package.json"
     }

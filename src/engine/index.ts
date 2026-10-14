@@ -28,10 +28,13 @@ export type { GameErrorCode } from './core/index.js';
 // Constants (rulebook-sourced tuning values used by the UI)
 export {
   ACTIONS_PER_TURN,
+  bankAuctionTokens,
+  containerSupply,
   DEFAULT_FACTORY_LOT,
   FACTORY_BUILD_COSTS,
   FACTORY_LOT_PRICES,
   FACTORY_STORAGE_PER_FACTORY,
+  factorySupplyPerColor,
   HARBOR_LOT_PRICES,
   LOAN_AMOUNT,
   LOAN_ENDGAME_COST,
@@ -45,6 +48,7 @@ export {
   UNION_WAGE,
   WAREHOUSE_BUILD_COSTS,
   WAREHOUSE_STORAGE_PER_WAREHOUSE,
+  warehouseSupplyTotal,
 } from './core/index.js';
 
 // Setup + state accessors
