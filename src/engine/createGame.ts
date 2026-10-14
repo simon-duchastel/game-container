@@ -1,19 +1,19 @@
 import {
   ACTIONS_PER_TURN,
-  BANK_AUCTION_TOKENS,
   BANK_CASH_LOT_SETUP,
+  bankAuctionTokens,
   COLORS,
-  CONTAINER_SUPPLY_STANDARD,
+  containerSupply,
   DEFAULT_FACTORY_LOT,
   FACTORY_STORAGE_PER_FACTORY,
-  FACTORY_SUPPLY_PER_COLOR,
+  factorySupplyPerColor,
   GameError,
   MAX_PLAYERS,
   MIN_PLAYERS,
   SCORING_CARDS,
   STARTING_MONEY,
   WAREHOUSE_STORAGE_PER_WAREHOUSE,
-  WAREHOUSE_SUPPLY_TOTAL,
+  warehouseSupplyTotal,
 } from './core/index.js';
 import type { BankState, Color, GameState, PlayerState, ScoringCard, Supply } from './core/index.js';
 
@@ -89,8 +89,8 @@ export function createGame(options: CreateGameOptions): GameState {
   });
 
   // Supply, less what players took at setup (1 starting factory + container + 1 warehouse each).
-  const perColor = FACTORY_SUPPLY_PER_COLOR[count]!;
-  const perColorContainers = CONTAINER_SUPPLY_STANDARD[count]!;
+  const perColor = factorySupplyPerColor(count);
+  const perColorContainers = containerSupply(count);
   const factories = {} as Record<Color, number>;
   const containers = {} as Record<Color, number>;
   for (const color of COLORS) {
@@ -111,11 +111,11 @@ export function createGame(options: CreateGameOptions): GameState {
       containers[color] -= 1;
     }
   }
-  const supply: Supply = { containers, factories, warehouses: WAREHOUSE_SUPPLY_TOTAL[count]! - count };
+  const supply: Supply = { containers, factories, warehouses: warehouseSupplyTotal(count) - count };
   const bank: BankState = {
     cashLots: [...BANK_CASH_LOT_SETUP],
     containerLots: bankContainerLots,
-    tokens: BANK_AUCTION_TOKENS[count]!,
+    tokens: bankAuctionTokens(count),
     auctions: [],
   };
 

@@ -70,6 +70,53 @@ entirely inside `bot/`.
 > **Convention:** new mechanics are `actions/<name>.ts` + a matching `tests/<name>.test.ts`, reusing
 > `internal/` helpers. Keep files small and single-responsibility.
 
+## N-seat play — linear resource scaling (2026-10)
+
+To support an N-agent game (default N=100) the four rulebook supply tables became closed-form functions of
+the seat count, anchored so N=3/4/5 reproduce the old values byte-for-byte:
+
+| Supply | 3/4/5 table | Formula | N=100 |
+|--------|-------------|---------|-------|
+| Factories per colour (`factorySupplyPerColor`) | 2/3/4 | `n − 1` | 99 |
+| Warehouses total (`warehouseSupplyTotal`) | 12/16/20 | `4n` | 400 |
+| Containers per colour (`containerSupply`) | 11/14/17 | `3n + 2` | 302 |
+| Bank auction tokens (`bankAuctionTokens`) | 1/1/2 | `max(1, n − 3)` | 97 |
+
+`MAX_PLAYERS` rose from 5 to **100**. The old `Record<number, number>` lookups were `undefined` at any N
+outside 3–5 (the `[count]!` assertion lied), which is why a 100-seat game was impossible. `createGame`'s
+setup subtractions (one starting factory/container/warehouse per seat, plus the 3 seeded Bank containers)
+already scale, so the formulas are the only engine change N-seat play needed. The equivalence tests in
+`src/engine/tests/createGame.test.ts` pin N=3/4/5 to the legacy table and exercise `createGame(100)`.
+
+**Judgment call — bank auction tokens.** The legacy curve (1/1/2) is not linear. `max(1, n − 3)` is the
+gentle fit chosen here (97 tokens at N=100); the steeper `floor((n − 1)/2)` would give 49. Both reproduce
+1/1/2. **Bank lot slots are not scaled**: `BANK_CASH_LOT_SETUP` (3 cash lots) and the Bank's 3 container
+lots are *board slots*, not countable resources, so at N=100 they are heavily contended — multiplying them
+would be a board/UI change, deliberately out of scope here. The five container colours and five scoring
+cards still wrap via `seat % 5`; per-seat caps (`MAX_FACTORIES=4`, `MAX_WAREHOUSES=5`, `SHIP_CAPACITY=5`)
+are already per-seat and unchanged.
+
+## Headless simulation (`src/sim/` + `container-sim`)
+
+The `./sim` subpath gives a host a way to drive games with **no server**, so an agent loop can be built and
+tested before anything touches the live apply path:
+
+- `runAgentGame` — an **async** per-turn loop. Unlike the kernel's synchronous `runBotLoop` (which must stay
+  synchronous: the backend apply path cannot gain an `await`), this awaits each seat's decider, so an
+  external agent (a subprocess, a language model) can play. Every agent decision is contained: a throw, a
+  timeout, or an illegal action falls back to the deterministic built-in `decide`, so a game never wedges.
+  The fallback count is reported.
+- `buildReplay`/`parseReplay` — a portable replay envelope of **full snapshots**, not the lossy `moves` log.
+  The `moves` log deliberately never records a losing delivery bid, so a replay rebuilt from it cannot
+  reproduce the game; full snapshots can, and reconstruct final scoring exactly. `schemaVersion` guards a
+  reader against a newer file, mirroring the backend's `SchemaUnsupportedError`.
+- `runSim` — deals seeded games (same deal as the strength bench), plays them, and returns scores + the last
+  game's replay.
+- `container-sim` — the CLI: `--count N --seed S --games K --agents <heuristic|pi> --emit-replay <file>`.
+
+This is the loop the platform's future external orchestrator mirrors; nothing here changes an engine rule or
+the kernel contract.
+
 ## Core game — vertical slices (all complete ✅)
 
 | # | Slice | Delivers (demo) | Size | Depends on |

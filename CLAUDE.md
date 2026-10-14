@@ -8,10 +8,12 @@ Working agreement for this repo. It is the lean, repo-scoped version of the Game
 
 Container (10th Anniversary Edition) as a **Game Hub game package**, built **outside** the platform
 monorepo against the *published* `@game-hub/kernel` and `@game-hub/ui-kit` — the second game extracted this
-way, following the pattern `@game-hub/game-labyrinth` proved (Track D). Four subpath exports (`./engine`,
-`./module`, `./client`, `./bot`) behind game-agnostic hosts. Container is the heaviest, most host-coupled
-game: it uses **every** optional `GameModule` hook — a sealed-bid delivery auction on its own SQLite table,
-`pendingStep`, an `onStateChanged` push, and a bot runner with the auction preStep.
+way, following the pattern `@game-hub/game-labyrinth` proved (Track D). Subpath exports (`./engine`,
+`./module`, `./client`, `./bot`, `./sim`) plus a `container-sim` bin, behind game-agnostic hosts. Container
+is the heaviest, most host-coupled game: it uses **every** optional `GameModule` hook — a sealed-bid
+delivery auction on its own SQLite table, `pendingStep`, an `onStateChanged` push, and a bot runner with the
+auction preStep. Its supply counts scale **linearly** with the seat count so an N-agent game (default 100)
+deals correctly, and `./sim` carries the async agent loop + replay envelope for running games with no server.
 
 ⚠️ **The platform monorepo is a reference, never a dependency.** This repo must contain **no** path, link,
 `file:`/`workspace:` dep or import that reaches into it. Its conventions are worth copying; its filesystem is
@@ -42,8 +44,8 @@ so a game that ends up resolving a different kernel copy is caught at registrati
   citation survives.
 - **Tests ship with the code.** A feature without tests isn't finished. `src/engine/**` is gated at **100%**
   (every branch of a rule is a rule and deserves a test); `src/bot/**` at **90%** (heuristics get retuned; a
-  100% bar on judgement calls buys churn). Never weaken a gate to make a change land — including by widening
-  `coverage.exclude`.
+  100% bar on judgement calls buys churn) and `src/sim/**` at **90%** (driver orchestration, not rules). Never
+  weaken a gate to make a change land — including by widening `coverage.exclude`.
 - **The engine is pure.** No `Date`, no `Math.random`, no mutation, no I/O. Container injects its randomness
   at setup: the engine's `createGame` is fully deterministic (the caller supplies each seat's starting colour
   and scoring-card id), and `./module`'s `newContainerGame` is the only place a `shuffle(deck, rng)` runs —
@@ -58,8 +60,8 @@ so a game that ends up resolving a different kernel copy is caught at registrati
 ## Conventions
 
 - **Unit tests live in `src/<subpath>/tests/`**, not beside the source. `src/engine/**` is gated at 100% and
-  `src/bot/**` at 90%; `src/module/**` and `src/client/**` have no coverage gate here (they are host
-  bindings, exercised by the hub's own backend/UI suites once this game is registered).
+  `src/bot/**` and `src/sim/**` at 90%; `src/module/**` and `src/client/**` have no coverage gate here (they
+  are host bindings, exercised by the hub's own backend/UI suites once this game is registered).
 - **`viewFor` and the view types live in the *engine* (`src/engine/view.ts`), not the module.** What a
   player may see is as much a rule as what they may do, it belongs under the 100% gate, and `./client`/`./bot`
   must be able to name the projection type without importing `./module`. The module just delegates. ⚠️ Build a
@@ -97,9 +99,9 @@ pnpm pack:smoke   # slower; run it whenever you touch imports, exports, package.
 
 `pack:smoke` is the only check that runs against **`dist/`** rather than TS source: it packs the tarball,
 installs it plus its declared peers **from the public registry** into a throwaway project outside this repo,
-plays a game (and a bot move) through all four subpaths under plain `node`, and typechecks a consumer against
-the shipped `.d.ts` under `nodenext` resolution. Everything else here would stay green while the published
-package was unusable.
+plays a game (and a bot move, and a sim replay) through all five subpaths under plain `node`, and typechecks
+a consumer against the shipped `.d.ts` under `nodenext` resolution. Everything else here would stay green
+while the published package was unusable.
 
 - **Verify, don't infer.** Green tests are not evidence a feature works — drive the real thing where one
   exists. If you didn't verify it, say so plainly.

@@ -34,12 +34,38 @@ export const LOAN_ENDGAME_COST = 11;
 /** Off-Shore Bank setup: cash lots I/II/III start at $1/$2/$3 (rulebook setup step 6). */
 export const BANK_CASH_LOT_SETUP: readonly number[] = [1, 2, 3];
 
-/** Auction tokens by player count (rulebook setup table): 1 for 3–4 players, 2 for 5. */
-export const BANK_AUCTION_TOKENS: Readonly<Record<number, number>> = { 3: 1, 4: 1, 5: 2 };
+/**
+ * The Off-Shore Bank's auction tokens as a closed-form function of the player count. The rulebook
+ * setup table gives 1 token for 3–4 players and 2 for 5; that curve is not linear, so this is the
+ * one deliberately-chosen fit. `Math.max(1, n - 3)` reproduces 1/1/2 exactly and grows gently
+ * (97 tokens at N=100, against the steep `floor((n-1)/2)` = 49).
+ */
+export const bankAuctionTokens = (n: number): number => Math.max(1, n - 3);
 
-/** Supported player counts (rulebook: 3–5 players). */
+/**
+ * Resource counts are **linear in the player count**, anchored so N=3/4/5 reproduce today's rulebook
+ * table byte-for-byte. The old `Record<number, number>` tables are gone because `[n]!` is `undefined`
+ * at any N outside 3–5 — the whole reason a 100-seat game was impossible. The setup subtractions in
+ * `createGame` (one starting factory/container/warehouse per seat, plus the 3 Bank containers) already
+ * scale, so these formulas are the only engine change N-seat play needs.
+ *
+ * | Supply | 3/4/5 table | Formula |
+ * |---|---|---|
+ * | Factories per color | 2/3/4 | `n - 1` |
+ * | Warehouses total | 12/16/20 | `4n` |
+ * | Containers per color | 11/14/17 | `3n + 2` |
+ *
+ * `MAX_PLAYERS` is raised to the ceiling the N-agent work targets (was 5). `createGame` validates
+ * against it; the host's `GAME_AGENT_COUNT` must not exceed it (the game's `maxPlayers` is derived
+ * from this constant).
+ */
+export const factorySupplyPerColor = (n: number): number => n - 1;
+export const warehouseSupplyTotal = (n: number): number => 4 * n;
+export const containerSupply = (n: number): number => 3 * n + 2;
+
+/** Supported player counts. The minimum is the rulebook's; the maximum is this build's N-agent ceiling. */
 export const MIN_PLAYERS = 3;
-export const MAX_PLAYERS = 5;
+export const MAX_PLAYERS = 100;
 
 /** Valid storage-lot (sale) prices for each district, from the rulebook player board. */
 export const FACTORY_LOT_PRICES = [1, 2, 3, 4, 5, 6] as const;
@@ -65,15 +91,5 @@ export const FACTORY_BUILD_COSTS = [4, 8, 12] as const;
  */
 export const WAREHOUSE_BUILD_COSTS = [3, 6, 9, 12] as const;
 
-/** Factory buildings available per color, by player count (rulebook setup table). Internal. */
-export const FACTORY_SUPPLY_PER_COLOR: Readonly<Record<number, number>> = { 3: 2, 4: 3, 5: 4 };
-
-/** Warehouse buildings available total, by player count (rulebook setup table). Internal. */
-export const WAREHOUSE_SUPPLY_TOTAL: Readonly<Record<number, number>> = { 3: 12, 4: 16, 5: 20 };
-
-/**
- * Containers available per color, by player count — STANDARD game length (rulebook setup table).
- * (Short = 9/11/13, Extended = 12/16/20; we use Standard for now.) Internal.
- * TODO(Slice 6): setup step 5 also seeds 3 random containers onto the Off-Shore Bank — deferred.
- */
-export const CONTAINER_SUPPLY_STANDARD: Readonly<Record<number, number>> = { 3: 11, 4: 14, 5: 17 };
+// (The three per-count supply tables that used to live here are now the closed-form functions
+// `factorySupplyPerColor` / `warehouseSupplyTotal` / `containerSupply` above.)

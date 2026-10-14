@@ -50,13 +50,14 @@ import { applyAction, createGame, legalActions, viewFor, COLORS, MIN_PLAYERS, MA
 import containerModule from '@game-hub/game-container/module';
 import containerClient from '@game-hub/game-container/client';
 import * as bot from '@game-hub/game-container/bot';
+import { parseReplay, runSim, REPLAY_SCHEMA_VERSION } from '@game-hub/game-container/sim';
 
 const require = createRequire(import.meta.url);
 const threePlayers = [{ name: 'Ann' }, { name: 'Bob' }, { name: 'Cara' }];
 
 // --- ./engine — the pure rules core, driven for real. ---
 assert.equal(MIN_PLAYERS, 3);
-assert.equal(MAX_PLAYERS, 5);
+assert.equal(MAX_PLAYERS, 100);
 assert.deepEqual([...COLORS].sort(), ['blue', 'green', 'red', 'white', 'yellow']);
 const engineGame = createGame({ id: 'e', players: threePlayers });
 assert.equal(engineGame.players.length, 3);
@@ -66,7 +67,7 @@ assert.ok(legalActions(engineGame, engineGame.players[0].id).length > 0);
 // --- ./module — the backend seam: identity, then a real turn through parse -> apply -> redact. ---
 assert.equal(containerModule.id, 'container');
 assert.equal(containerModule.minPlayers, 3);
-assert.equal(containerModule.maxPlayers, 5);
+assert.equal(containerModule.maxPlayers, 100);
 assert.equal(containerModule.kernelContract, 1);
 assert.deepEqual([...containerModule.colors], ['indigo', 'teal', 'rose', 'amber', 'violet']);
 
@@ -157,7 +158,14 @@ assert.equal(containerModule.versionOf(afterBot), 1, "the bot's move must be leg
 // The only runtime dependency this package ships is lucide-react; everything else is a peer the host has.
 assert.deepEqual(Object.keys(require('@game-hub/game-container/package.json').dependencies ?? {}), ['lucide-react']);
 
-console.log('runtime smoke ok — ./engine ./module ./client ./bot all resolve, a game plays and a bot moves');
+// --- ./sim — the headless surface: an async agent game plus a replay envelope round-trip. ---
+assert.equal(REPLAY_SCHEMA_VERSION, 1);
+const sim = await runSim({ count: 3, seed: 42, mode: 'pi' });
+assert.equal(sim.games[0].completed, true);
+assert.ok(sim.replay.snapshots.length > 1, 'a replay captures every turn');
+assert.equal(parseReplay(JSON.parse(JSON.stringify(sim.replay))).gameId, sim.replay.gameId);
+
+console.log('runtime smoke ok — ./engine ./module ./client ./bot ./sim all resolve, a game plays, a bot moves and a sim replays');
 `;
 
 /** What a consumer's compiler must see: the exported type surface, through the published `exports`. */
@@ -173,6 +181,7 @@ import containerClient, {
   type GameView as ClientGameView,
 } from '@game-hub/game-container/client';
 import { decide, type DecideFn } from '@game-hub/game-container/bot';
+import { runAgentGame, parseReplay, type Replay, type AsyncSeatPolicy } from '@game-hub/game-container/sim';
 import type { GameModule as KernelGameModule } from '@game-hub/kernel';
 
 // The standardized ./client surface (game-creation.md §4): the client is both a default AND a typed named
@@ -218,6 +227,16 @@ export const surface = {
   board: containerClient.Board,
   botMoveType: botMove.type as Action['type'],
 };
+
+// The ./sim surface: the async agent loop and the replay envelope are nameable and callable through the
+// published declaration set. runAgentGame returns a promise; parseReplay narrows an untrusted value.
+// Touch the types so a drift in the ./sim barrel fails this consumer.
+const _agent: AsyncSeatPolicy = {
+  decide: async (view, playerId) => decide(view, playerId),
+};
+const _run = (): Promise<unknown> => runAgentGame(state, { agent: _agent });
+const _parse = (raw: unknown): Replay => parseReplay(raw);
+void [_run, _parse];
 `;
 
 const CONSUMER_TSCONFIG = {
@@ -276,7 +295,7 @@ try {
     projectDir,
   );
 
-  step('runtime: driving a game through all four subpaths with plain node');
+  step('runtime: driving a game through all five subpaths with plain node');
   writeFileSync(join(projectDir, 'smoke.mjs'), RUNTIME_SMOKE);
   run(process.execPath, ['smoke.mjs'], projectDir);
 
